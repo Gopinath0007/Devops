@@ -2,23 +2,52 @@
 <configuration>
     <system.webServer>
         <rewrite>
-            <outboundRules>
-                <rule name="ReverseProxyOutboundRule1" preCondition="ResponseIsHtml1">
-                    <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.55:8081/(.*)" />
-                    <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
-                </rule>
-                <preConditions>
-                    <preCondition name="ResponseIsHtml1">
-                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-                    </preCondition>
-                </preConditions>
-            </outboundRules>
+            <!-- Inbound rule for Application Server 1 -->
             <rules>
                 <rule name="ReverseProxyInboundRule1" stopProcessing="true">
                     <match url="(.*)" />
                     <action type="Rewrite" url="http://10.23.32.55:8081/{R:1}" />
                 </rule>
+
+                <!-- Inbound rule for Application Server 2 (failover) -->
+                <rule name="ReverseProxyInboundRule2" stopProcessing="true">
+                    <match url="(.*)" />
+                    <conditions>
+                        <!-- Custom health check for Application Server 1 -->
+                        <add input="{CACHE_URL}" pattern="^http://10.23.32.55:8081/" />
+                        <add input="{RESPONSE_STATUS}" pattern="^5\d{2}" />
+                    </conditions>
+                    <!-- If server 1 is not responsive, rewrite to server 2 -->
+                    <action type="Rewrite" url="http://10.23.32.57:8081/{R:1}" />
+                </rule>
             </rules>
+
+            <!-- Outbound rules for rewriting links in the response -->
+            <outboundRules>
+                <!-- Outbound rule for Application Server 1 -->
+                <rule name="ReverseProxyOutboundRule1" preCondition="ResponseIsHtml1">
+                    <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.55:8081/(.*)" />
+                    <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
+                </rule>
+
+                <!-- Outbound rule for Application Server 2 -->
+                <rule name="ReverseProxyOutboundRule2" preCondition="ResponseIsHtml2">
+                    <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.57:8081/(.*)" />
+                    <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
+                </rule>
+
+                <preConditions>
+                    <!-- Precondition for detecting HTML responses from Application Server 1 -->
+                    <preCondition name="ResponseIsHtml1">
+                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+                    </preCondition>
+
+                    <!-- Precondition for detecting HTML responses from Application Server 2 -->
+                    <preCondition name="ResponseIsHtml2">
+                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+                    </preCondition>
+                </preConditions>
+            </outboundRules>
         </rewrite>
     </system.webServer>
 </configuration>
