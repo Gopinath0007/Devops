@@ -2,21 +2,23 @@
 <configuration>
     <system.webServer>
         <rewrite>
-            <!-- Inbound rule for Application Server 1 -->
+            <!-- Inbound rules for Application Servers -->
             <rules>
+                <!-- Inbound rule for Application Server 1 -->
                 <rule name="ReverseProxyInboundRule1" stopProcessing="true">
                     <match url="(.*)" />
                     <action type="Rewrite" url="http://10.23.32.57:8081/{R:1}" />
+                    <!-- No conditions needed here -->
                 </rule>
 
                 <!-- Inbound rule for Application Server 2 (failover) -->
                 <rule name="ReverseProxyInboundRule2" stopProcessing="true">
                     <match url="(.*)" />
                     <action type="Rewrite" url="http://10.23.32.55:8081/{R:1}" />
-<conditions>
-   <!-- Check if the response status code is not 200 -->
-   <add input="{RESPONSE_STATUS}" pattern="^200$" negate="true" />
-</conditions>
+                    <!-- Conditions to check if the response status is not 200 -->
+                    <conditions>
+                        <add input="{RESPONSE_STATUS}" pattern="^200$" negate="true" />
+                    </conditions>
                 </rule>
             </rules>
 
@@ -33,20 +35,20 @@
                     <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.55:8081/(.*)" />
                     <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
                 </rule>
-<preConditions>
-   <!-- Precondition for detecting HTML responses from Application Server 1 -->
-   <preCondition name="ResponseIsHtml1">
-      <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-   </preCondition>
-
-   <!-- Precondition for detecting HTML responses from Application Server 2 -->
-   <preCondition name="ResponseIsHtml2">
-      <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-   </preCondition>
-</preConditions>
-
-
             </outboundRules>
+
+            <!-- Preconditions for detecting HTML responses -->
+            <preConditions>
+                <!-- Precondition for detecting HTML responses from Application Server 1 -->
+                <preCondition name="ResponseIsHtml1">
+                    <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+                </preCondition>
+
+                <!-- Precondition for detecting HTML responses from Application Server 2 -->
+                <preCondition name="ResponseIsHtml2">
+                    <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+                </preCondition>
+            </preConditions>
         </rewrite>
     </system.webServer>
 </configuration>
