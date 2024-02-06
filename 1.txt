@@ -1,51 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-    <system.webServer>
-        <rewrite>
-            <!-- Inbound rule for Application Server 1 -->
-            <rules>
-                <rule name="ReverseProxyInboundRule1" stopProcessing="true">
-                    <match url="(.*)" />
-                    <action type="Rewrite" url="http://ApplicationServer1:8080/{R:1}" />
-                </rule>
+<preConditions>
+   <!-- Precondition for detecting HTML responses from Application Server 1 -->
+   <preCondition name="ResponseIsHtml1">
+      <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+   </preCondition>
 
-                <!-- Inbound rule for Application Server 2 (failover) -->
-                <rule name="ReverseProxyInboundRule2" stopProcessing="true">
-                    <match url="(.*)" />
-                    <action type="Rewrite" url="http://ApplicationServer2:8080/{R:1}" />
-                    <conditions>
-                        <!-- Check if the response status code is not 200 -->
-                        <add input="{RESPONSE_STATUS}" pattern="^200$" negate="true" />
-                    </conditions>
-                </rule>
-            </rules>
+   <!-- Precondition for detecting HTML responses from Application Server 2 -->
+   <preCondition name="ResponseIsHtml2">
+      <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+   </preCondition>
+</preConditions>
 
-            <!-- Outbound rules for rewriting links in the response -->
-            <outboundRules>
-                <!-- Outbound rule for Application Server 1 -->
-                <rule name="ReverseProxyOutboundRule1" preCondition="ResponseIsHtml1">
-                    <match filterByTags="A, Form, Img" pattern="^http(s)?://ApplicationServer1:8080/(.*)" />
-                    <action type="Rewrite" value="http{R:1}://YourDomain.com/{R:2}" />
-                </rule>
 
-                <!-- Outbound rule for Application Server 2 -->
-                <rule name="ReverseProxyOutboundRule2" preCondition="ResponseIsHtml2">
-                    <match filterByTags="A, Form, Img" pattern="^http(s)?://ApplicationServer2:8080/(.*)" />
-                    <action type="Rewrite" value="http{R:1}://YourDomain.com/{R:2}" />
-                </rule>
 
-                <preConditions>
-                    <!-- Precondition for detecting HTML responses from Application Server 1 -->
-                    <preCondition name="ResponseIsHtml1">
-                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-                    </preCondition>
-
-                    <!-- Precondition for detecting HTML responses from Application Server 2 -->
-                    <preCondition name="ResponseIsHtml2">
-                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-                    </preCondition>
-                </preConditions>
-            </outboundRules>
-        </rewrite>
-    </system.webServer>
-</configuration>
+<conditions>
+   <!-- Check if the response status code is not 200 -->
+   <add input="{RESPONSE_STATUS}" pattern="^200$" negate="true" />
+</conditions>
