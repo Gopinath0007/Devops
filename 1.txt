@@ -1,2 +1,47 @@
-Hello
-Hello
+<system.webServer>
+    <rewrite>
+        <rules>
+            <!-- Primary server -->
+            <rule name="ReverseProxyInboundRule1" stopProcessing="true">
+                <match url="(.*)" />
+                <action type="Rewrite" url="http://10.23.32.57:8081/{R:1}" />
+            </rule>
+
+            <!-- Secondary server (failover) -->
+            <rule name="ReverseProxyInboundRule2" stopProcessing="true">
+                <match url="(.*)" />
+                <action type="Rewrite" url="http://10.23.32.55:8081/{R:1}" />
+                <conditions>
+                    <!-- Check if the response status code is not 200 -->
+                    <add input="{RESPONSE_STATUS}" pattern="^200$" negate="true" />
+                </conditions>
+            </rule>
+        </rules>
+
+        <outboundRules>
+            <!-- Rewrite links for HTML content from the primary server -->
+            <rule name="ReverseProxyOutboundRule1" preCondition="ResponseIsHtml1">
+                <match filterByTags="A,Form,Img" pattern="^http(s)?://10.23.32.57:8081/(.*)" />
+                <action type="Rewrite" value="http{R:1}://eba-uatladdofIgoy-ae/{R:2}" />
+            </rule>
+
+            <!-- Rewrite links for HTML content from the secondary server -->
+            <rule name="ReverseProxyOutboundRule2" preCondition="ResponseIsHtml2">
+                <match filterByTags="A,Form,Img" pattern="^http(s)?://10.23.32.55:8081/(.*)" />
+                <action type="Rewrite" value="http{R:1}://uat.addof.gov.ae/{R:2}" />
+            </rule>
+        </outboundRules>
+
+        <preConditions>
+            <!-- Precondition to check if the response content type is HTML for server 1 -->
+            <preCondition name="ResponseIsHtml1">
+                <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+            </preCondition>
+
+            <!-- Precondition to check if the response content type is HTML for server 2 -->
+            <preCondition name="ResponseIsHtml2">
+                <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
+            </preCondition>
+        </preConditions>
+    </rewrite>
+</system.webServer>
