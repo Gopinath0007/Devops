@@ -1,21 +1,21 @@
-upstream backend_server2 {
-    server 172.16.9.191:32001;
-    server 172.16.8.74:32001;
-    # Add more backend servers for port 32001 as needed
-}
-
-server {
-    listen 80;
-    server_name stg-service360.tec.gov.ae;
-
-    location / {
-        proxy_pass http://backend_server1;
-        # You can adjust other proxy settings as needed
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+http {
+    upstream backend_servers {
+        server 127.0.0.1:8080;
+        server 127.0.0.1:8081;
+        # Add more backend servers as needed
     }
 
-    return 301 https://$host$request_uri;
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            proxy_pass http://backend_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+        }
+    }
 }
