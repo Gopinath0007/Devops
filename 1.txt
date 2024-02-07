@@ -1,53 +1,27 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-    <system.webServer>
-        <rewrite>
-            <!-- Inbound rule for Application Server 1 -->
-            <rules>
-                <rule name="ReverseProxyInboundRule1" stopProcessing="true">
-                    <match url="(.*)" />
-                    <action type="Rewrite" url="http://10.23.32.55:8081/{R:1}" />
-                </rule>
+upstream backend_server1 {
+    server 172.16.9.191:32000;
+    server 172.16.8.74:32000;
+    # Add more backend servers for port 32000 as needed
+}
 
-                <!-- Inbound rule for Application Server 2 (failover) -->
-                <rule name="ReverseProxyInboundRule2" stopProcessing="true">
-                    <match url="(.*)" />
-                    <conditions>
-                        <!-- Custom health check for Application Server 1 -->
-                        <add input="{CACHE_URL}" pattern="^http://10.23.32.55:8081/" />
-                        <add input="{RESPONSE_STATUS}" pattern="^5\d{2}" />
-                    </conditions>
-                    <!-- If server 1 is not responsive, rewrite to server 2 -->
-                    <action type="Rewrite" url="http://10.23.32.57:8081/{R:1}" />
-                </rule>
-            </rules>
+upstream backend_server2 {
+    server 172.16.9.191:32001;
+    server 172.16.8.74:32001;
+    # Add more backend servers for port 32001 as needed
+}
 
-            <!-- Outbound rules for rewriting links in the response -->
-            <outboundRules>
-                <!-- Outbound rule for Application Server 1 -->
-                <rule name="ReverseProxyOutboundRule1" preCondition="ResponseIsHtml1">
-                    <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.55:8081/(.*)" />
-                    <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
-                </rule>
+server {
+    listen 80;
+    server_name stg-service360.tec.gov.ae;
 
-                <!-- Outbound rule for Application Server 2 -->
-                <rule name="ReverseProxyOutboundRule2" preCondition="ResponseIsHtml2">
-                    <match filterByTags="A, Form, Img" pattern="^http(s)?://10.23.32.57:8081/(.*)" />
-                    <action type="Rewrite" value="http{R:1}://eba-uat.addof.gov.ae/{R:2}" />
-                </rule>
+    location / {
+        proxy_pass http://backend_server1;
+        # You can adjust other proxy settings as needed
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
-                <preConditions>
-                    <!-- Precondition for detecting HTML responses from Application Server 1 -->
-                    <preCondition name="ResponseIsHtml1">
-                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-                    </preCondition>
-
-                    <!-- Precondition for detecting HTML responses from Application Server 2 -->
-                    <preCondition name="ResponseIsHtml2">
-                        <add input="{RESPONSE_CONTENT_TYPE}" pattern="^text/html" />
-                    </preCondition>
-                </preConditions>
-            </outboundRules>
-        </rewrite>
-    </system.webServer>
-</configuration>
+    return 301 https://$host$request_uri;
+}
